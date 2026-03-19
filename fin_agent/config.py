@@ -99,9 +99,13 @@ class Config:
         # Explicitly define path to ensure we are loading the right file
         env_path = cls.get_env_path()
         
-        # Load from user config dir
+        # Load from user config dir; fall back to local .env (dev mode)
         if os.path.exists(env_path):
             load_dotenv(env_path, override=True)
+        else:
+            local_env = os.path.join(os.getcwd(), ".env")
+            if os.path.exists(local_env):
+                load_dotenv(local_env, override=True)
         
         cls.TUSHARE_TOKEN = os.getenv("TUSHARE_TOKEN")
         cls.LLM_PROVIDER = os.getenv("LLM_PROVIDER", "deepseek")
