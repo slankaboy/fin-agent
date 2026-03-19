@@ -48,6 +48,7 @@ class FinAgent:
             "For portfolio management (add/remove position), use 'add_portfolio_position' or 'remove_portfolio_position'. "
             "When setting price alerts with percentages (e.g. 'alert if rises 5%'), you MUST first fetch the current price (or relevant base price), calculate the target absolute price, and then set the alert with that absolute value. "
             "For configuration (email, tushare token, llm settings), use 'reset_email_config' or 'reset_core_config'. These tools are INTERACTIVE, so simply call them when requested; do NOT ask the user for details in the chat."
+            "For local financial report files (CSV/Excel), use 'list_local_reports' to discover files, 'get_report_columns' to inspect structure, and 'read_local_report' to load data. Files should be placed in the reports directory shown by list_local_reports."
             "When analyzing, EXPLICITLY mention the date of the data you are using. "
             "Calculate percentage changes and describe the trend (e.g., upward, downward, volatile) based on the data. "
             "When you have enough information, answer the user's question directly.\\n\\n"

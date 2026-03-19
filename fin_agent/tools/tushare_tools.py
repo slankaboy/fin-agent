@@ -25,6 +25,13 @@ from fin_agent.tools.profile_tools import (
     update_user_profile,
     get_user_profile
 )
+from fin_agent.tools.local_report_tools import (
+    LOCAL_REPORT_TOOLS_SCHEMA,
+    list_local_reports,
+    read_local_report,
+    get_report_columns,
+    read_pdf_pages
+)
 
 # Initialize Tushare - will be re-initialized when called if Config updates
 def get_pro():
@@ -1980,7 +1987,7 @@ BASE_TOOLS_SCHEMA = [
 ]
 
 # Combine schemas
-TOOLS_SCHEMA = BASE_TOOLS_SCHEMA + PORTFOLIO_TOOLS_SCHEMA + SCHEDULER_TOOLS_SCHEMA + PROFILE_TOOLS_SCHEMA
+TOOLS_SCHEMA = BASE_TOOLS_SCHEMA + PORTFOLIO_TOOLS_SCHEMA + SCHEDULER_TOOLS_SCHEMA + PROFILE_TOOLS_SCHEMA + LOCAL_REPORT_TOOLS_SCHEMA
 
 # Helper to execute tool calls
 def execute_tool_call(tool_name, arguments):
@@ -2100,5 +2107,13 @@ def execute_tool_call(tool_name, arguments):
         return update_user_profile(**arguments)
     elif tool_name == "get_user_profile":
         return get_user_profile(**arguments)
+    elif tool_name == "list_local_reports":
+        return list_local_reports()
+    elif tool_name == "get_report_columns":
+        return get_report_columns(**arguments)
+    elif tool_name == "read_local_report":
+        return read_local_report(**arguments)
+    elif tool_name == "read_pdf_pages":
+        return read_pdf_pages(**arguments)
     else:
         return f"Error: Tool '{tool_name}' not found."
