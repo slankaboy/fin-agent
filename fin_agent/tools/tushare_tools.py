@@ -32,6 +32,13 @@ from fin_agent.tools.local_report_tools import (
     get_report_columns,
     read_pdf_pages
 )
+from fin_agent.tools.rag_tools import (
+    RAG_TOOLS_SCHEMA,
+    index_document_to_rag,
+    search_knowledge,
+    list_rag_sources,
+    delete_rag_source
+)
 
 # Initialize Tushare - will be re-initialized when called if Config updates
 def get_pro():
@@ -2081,7 +2088,7 @@ BASE_TOOLS_SCHEMA = [
 ]
 
 # Combine schemas
-TOOLS_SCHEMA = BASE_TOOLS_SCHEMA + PORTFOLIO_TOOLS_SCHEMA + SCHEDULER_TOOLS_SCHEMA + PROFILE_TOOLS_SCHEMA + LOCAL_REPORT_TOOLS_SCHEMA
+TOOLS_SCHEMA = BASE_TOOLS_SCHEMA + PORTFOLIO_TOOLS_SCHEMA + SCHEDULER_TOOLS_SCHEMA + PROFILE_TOOLS_SCHEMA + LOCAL_REPORT_TOOLS_SCHEMA + RAG_TOOLS_SCHEMA
 
 # Helper to execute tool calls
 def execute_tool_call(tool_name, arguments):
@@ -2211,5 +2218,13 @@ def execute_tool_call(tool_name, arguments):
         return read_local_report(**arguments)
     elif tool_name == "read_pdf_pages":
         return read_pdf_pages(**arguments)
+    elif tool_name == "index_document_to_rag":
+        return index_document_to_rag(**arguments)
+    elif tool_name == "search_knowledge":
+        return search_knowledge(**arguments)
+    elif tool_name == "list_rag_sources":
+        return list_rag_sources()
+    elif tool_name == "delete_rag_source":
+        return delete_rag_source(**arguments)
     else:
         return f"Error: Tool '{tool_name}' not found."

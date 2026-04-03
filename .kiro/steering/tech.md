@@ -16,6 +16,8 @@
 | `schedule` | Background task scheduling (price alerts) |
 | `pdfplumber` | Local PDF financial report parsing |
 | `psutil` | Process management utilities |
+| `sentence-transformers` | Local multilingual embedding model for RAG |
+| `pymilvus` | Milvus Lite vector store for RAG (local `.db` file, no server needed) |
 
 ## LLM Integration
 - All LLM providers use the OpenAI SDK (`openai` package)
