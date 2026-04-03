@@ -31,6 +31,7 @@ class FinAgent:
             "### TOOL USAGE ###\\n"
             "For 'latest' or 'current' price queries, use 'get_realtime_price'. "
             "For trends and analysis, use 'get_daily_price' to get historical context. "
+            "For intraday (分时) data on a specific day, use 'get_minute_bar' with the desired frequency (1min/5min/15min/30min/60min). "
             "For valuation (PE, PB) or market cap, use 'get_daily_basic'. "
             "For financial performance (Revenue, Profit), use 'get_income_statement'. "
             "For market index (Shanghai Composite, etc.), use 'get_index_daily'. "

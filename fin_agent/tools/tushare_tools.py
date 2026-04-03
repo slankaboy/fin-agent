@@ -106,6 +106,28 @@ def get_daily_price(ts_code, start_date=None, end_date=None):
     except Exception as e:
         return f"Error fetching daily price: {str(e)}"
 
+def get_minute_bar(ts_code, trade_date, freq="1min"):
+    """
+    Get historical intraday (minute-bar) data for a stock on a specific trading day.
+    :param ts_code: Stock code (e.g., 000001.SZ)
+    :param trade_date: Trading date (YYYYMMDD)
+    :param freq: Bar frequency — '1min', '5min', '15min', '30min', '60min'
+    :return: JSON string sorted by time ascending
+    """
+    valid_freqs = ("1min", "5min", "15min", "30min", "60min")
+    if freq not in valid_freqs:
+        return f"Error: freq must be one of {valid_freqs}."
+    try:
+        pro = get_pro()
+        df = pro.stk_mins(ts_code=ts_code, trade_date=trade_date, freq=freq)
+        if df is None or df.empty:
+            return f"No minute-bar data found for {ts_code} on {trade_date} (freq={freq}). Note: Tushare minute data requires sufficient points."
+        df = df.sort_values("trade_time", ascending=True)
+        return df.to_json(orient="records", force_ascii=False)
+    except Exception as e:
+        return f"Error fetching minute-bar data: {str(e)}"
+
+
 def get_realtime_price(ts_code):
     """
     Get realtime stock price using legacy Tushare interface.
@@ -1310,6 +1332,37 @@ BASE_TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
+            "name": "get_minute_bar",
+            "description": (
+                "Get historical intraday (minute-bar / 分时) data for a stock on a specific trading day. "
+                "Returns OHLCV bars at the requested frequency. "
+                "Use for intraday trend analysis, opening/closing auction patterns, or fine-grained price action. "
+                "Note: requires sufficient Tushare points."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ts_code": {
+                        "type": "string",
+                        "description": "Stock code, e.g. '000001.SZ'."
+                    },
+                    "trade_date": {
+                        "type": "string",
+                        "description": "Trading date in YYYYMMDD format, e.g. '20240101'."
+                    },
+                    "freq": {
+                        "type": "string",
+                        "enum": ["1min", "5min", "15min", "30min", "60min"],
+                        "description": "Bar frequency. Default '1min'."
+                    }
+                },
+                "required": ["ts_code", "trade_date"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_realtime_price",
             "description": "Get the latest real-time stock price data (current price, bid/ask, volume, etc.). Use this for the most up-to-date market snapshot.",
             "parameters": {
@@ -2120,6 +2173,8 @@ def execute_tool_call(tool_name, arguments):
         return get_stock_basic(**arguments)
     elif tool_name == "get_daily_price":
         return get_daily_price(**arguments)
+    elif tool_name == "get_minute_bar":
+        return get_minute_bar(**arguments)
     elif tool_name == "get_realtime_price":
         return get_realtime_price(**arguments)
     elif tool_name == "get_daily_basic":
