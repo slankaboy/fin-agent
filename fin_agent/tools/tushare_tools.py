@@ -235,6 +235,48 @@ def get_limit_list(trade_date=None):
     except Exception as e:
         return f"Error fetching limit list: {str(e)}"
 
+def get_limit_detail(ts_code=None, trade_date=None, start_date=None, end_date=None, limit_type=None):
+    """
+    Get detailed limit up/down data including open/close times, failed breaks (炸板), 
+    continuous limit days, and limit reason.
+    :param ts_code: Stock code filter (optional)
+    :param trade_date: Single trade date (YYYYMMDD), overrides start/end
+    :param start_date: Start date (YYYYMMDD)
+    :param end_date: End date (YYYYMMDD)
+    :param limit_type: 'U' for limit up (涨停), 'D' for limit down (跌停), None for both
+    """
+    if not end_date:
+        end_date = datetime.now().strftime('%Y%m%d')
+    if not start_date and not trade_date:
+        start_date = (datetime.now() - timedelta(days=7)).strftime('%Y%m%d')
+
+    try:
+        pro = get_pro()
+        params = {}
+        if ts_code:
+            params['ts_code'] = ts_code
+        if trade_date:
+            params['trade_date'] = trade_date
+        else:
+            params['start_date'] = start_date
+            params['end_date'] = end_date
+
+        # limit_list_d provides richer fields: open_times, strth, limit_amount, 炸板 etc.
+        df = pro.limit_list_d(**params)
+        if df.empty:
+            return f"No limit detail data found."
+
+        if limit_type in ('U', 'D'):
+            df = df[df['limit'] == limit_type]
+
+        if df.empty:
+            return f"No {'limit up' if limit_type == 'U' else 'limit down'} data found."
+
+        df = df.sort_values(['trade_date', 'ts_code'], ascending=[False, True])
+        return df.to_json(orient='records', force_ascii=False)
+    except Exception as e:
+        return f"Error fetching limit detail: {str(e)}"
+
 def get_top_list(trade_date=None):
     """
     Get daily dragon and tiger list.
@@ -1802,6 +1844,45 @@ BASE_TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
+            "name": "get_limit_detail",
+            "description": (
+                "Get detailed limit up/down (涨跌停) data including open times, failed breaks (炸板次数), "
+                "continuous limit days (连板数), limit strength, and limit reason. "
+                "More detailed than get_limit_list. Use for analyzing limit-up chains, 炸板 patterns, "
+                "or a specific stock's historical limit behavior."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ts_code": {
+                        "type": "string",
+                        "description": "Stock code filter (e.g., '000001.SZ'). Optional."
+                    },
+                    "trade_date": {
+                        "type": "string",
+                        "description": "Single trade date (YYYYMMDD). Overrides start/end_date."
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "Start date (YYYYMMDD). Defaults to 7 days ago."
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "End date (YYYYMMDD). Defaults to today."
+                    },
+                    "limit_type": {
+                        "type": "string",
+                        "enum": ["U", "D"],
+                        "description": "'U' for limit up (涨停), 'D' for limit down (跌停). Omit for both."
+                    }
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_top_list",
             "description": "Get the Dragon and Tiger list (daily active/volatile stocks with detailed seat info).",
             "parameters": {
@@ -1964,8 +2045,16 @@ BASE_TOOLS_SCHEMA = [
                     },
                     "strategy": {
                         "type": "string",
-                        "enum": ["ma_cross", "macd", "rsi"],
-                        "description": "Strategy type. 'ma_cross' (Moving Average Crossover), 'macd' (MACD Cross), 'rsi' (RSI Reversal)."
+                        "enum": ["ma_cross", "macd", "rsi", "limit_up_follow", "limit_up_break", "continuous_limit"],
+                        "description": (
+                            "Strategy type. "
+                            "'ma_cross': Moving Average Crossover. "
+                            "'macd': MACD Cross. "
+                            "'rsi': RSI Reversal. "
+                            "'limit_up_follow': Buy next open after a limit-up close (涨停次日追板). "
+                            "'limit_up_break': Buy after a failed limit-up break (炸板反弹). "
+                            "'continuous_limit': Buy after N consecutive limit-up days (连板策略)."
+                        )
                     },
                     "start_date": {
                         "type": "string",
@@ -1977,7 +2066,12 @@ BASE_TOOLS_SCHEMA = [
                     },
                     "params": {
                         "type": "object",
-                        "description": "Strategy parameters. e.g., {'short_window': 5, 'long_window': 20} for ma_cross."
+                        "description": (
+                            "Strategy parameters. "
+                            "ma_cross: {'short_window': 5, 'long_window': 20}. "
+                            "limit_up_follow/limit_up_break: {'hold_days': 3, 'stop_loss': -0.05, 'take_profit': 0.10}. "
+                            "continuous_limit: {'min_continuous': 2, 'hold_days': 3, 'stop_loss': -0.05}."
+                        )
                     }
                 },
                 "required": ["ts_code"]
@@ -2067,6 +2161,8 @@ def execute_tool_call(tool_name, arguments):
         return get_hsgt_top10(**arguments)
     elif tool_name == "get_limit_list":
         return get_limit_list(**arguments)
+    elif tool_name == "get_limit_detail":
+        return get_limit_detail(**arguments)
     elif tool_name == "get_top_list":
         return get_top_list(**arguments)
     elif tool_name == "get_forecast":
