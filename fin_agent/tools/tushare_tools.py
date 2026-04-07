@@ -2,6 +2,7 @@ import tushare as ts
 import pandas as pd
 from fin_agent.config import Config
 import json
+import os
 from datetime import datetime, timedelta
 from fin_agent.tools.technical_indicators import get_technical_indicators, get_technical_patterns
 from fin_agent.backtest import run_backtest
@@ -305,6 +306,63 @@ def get_limit_detail(ts_code=None, trade_date=None, start_date=None, end_date=No
         return df.to_json(orient='records', force_ascii=False)
     except Exception as e:
         return f"Error fetching limit detail: {str(e)}"
+
+def save_limit_data(start_date=None, end_date=None, trade_date=None, limit_type=None, file_format="csv"):
+    """
+    Fetch limit up/down (涨跌停) data and save it to a local file in the config directory.
+    :param start_date: Start date (YYYYMMDD). Defaults to today.
+    :param end_date: End date (YYYYMMDD). Defaults to today.
+    :param trade_date: Single trade date (YYYYMMDD). Overrides start/end_date.
+    :param limit_type: 'U' for limit up (涨停), 'D' for limit down (跌停), None for both.
+    :param file_format: Output format, 'csv' or 'json'. Defaults to 'csv'.
+    """
+    today = datetime.now().strftime('%Y%m%d')
+    if not trade_date:
+        if not start_date:
+            start_date = today
+        if not end_date:
+            end_date = today
+
+    try:
+        pro = get_pro()
+        params = {}
+        if trade_date:
+            params['trade_date'] = trade_date
+        else:
+            params['start_date'] = start_date
+            params['end_date'] = end_date
+
+        df = pro.limit_list_d(**params)
+        if df.empty:
+            return "未获取到涨跌停数据，请检查日期是否为交易日。"
+
+        if limit_type in ('U', 'D'):
+            df = df[df['limit'] == limit_type]
+            if df.empty:
+                label = '涨停' if limit_type == 'U' else '跌停'
+                return f"该日期范围内无{label}数据。"
+
+        df = df.sort_values(['trade_date', 'ts_code'], ascending=[False, True])
+
+        # Build filename
+        date_tag = trade_date if trade_date else f"{start_date}_{end_date}"
+        type_tag = {'U': '_limit_up', 'D': '_limit_down'}.get(limit_type, '_limit_all')
+        ext = "json" if file_format == "json" else "csv"
+        filename = f"limit_data{type_tag}_{date_tag}.{ext}"
+
+        save_dir = os.path.join(Config.get_config_dir(), "limit_data")
+        os.makedirs(save_dir, exist_ok=True)
+        filepath = os.path.join(save_dir, filename)
+
+        if file_format == "json":
+            df.to_json(filepath, orient='records', force_ascii=False, indent=2)
+        else:
+            df.to_csv(filepath, index=False, encoding='utf-8-sig')
+
+        type_label = {'U': '涨停', 'D': '跌停'}.get(limit_type, '涨跌停')
+        return f"已保存 {len(df)} 条{type_label}数据到：{filepath}"
+    except Exception as e:
+        return f"保存涨跌停数据失败：{str(e)}"
 
 def get_top_list(trade_date=None):
     """
@@ -1943,6 +2001,45 @@ BASE_TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
+            "name": "save_limit_data",
+            "description": (
+                "获取涨跌停（limit up/down）数据并保存到本地文件（CSV 或 JSON）。"
+                "支持按日期范围或单日查询，可筛选涨停（U）或跌停（D）。"
+                "文件保存在配置目录的 limit_data/ 子目录下，并返回保存路径。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "trade_date": {
+                        "type": "string",
+                        "description": "单个交易日 (YYYYMMDD)，优先于 start_date/end_date。"
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "开始日期 (YYYYMMDD)，默认今天。"
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "结束日期 (YYYYMMDD)，默认今天。"
+                    },
+                    "limit_type": {
+                        "type": "string",
+                        "enum": ["U", "D"],
+                        "description": "'U' 仅涨停，'D' 仅跌停，不传则涨跌停都保存。"
+                    },
+                    "file_format": {
+                        "type": "string",
+                        "enum": ["csv", "json"],
+                        "description": "保存格式，'csv'（默认）或 'json'。"
+                    }
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_top_list",
             "description": "Get the Dragon and Tiger list (daily active/volatile stocks with detailed seat info).",
             "parameters": {
@@ -2225,6 +2322,8 @@ def execute_tool_call(tool_name, arguments):
         return get_limit_list(**arguments)
     elif tool_name == "get_limit_detail":
         return get_limit_detail(**arguments)
+    elif tool_name == "save_limit_data":
+        return save_limit_data(**arguments)
     elif tool_name == "get_top_list":
         return get_top_list(**arguments)
     elif tool_name == "get_forecast":
