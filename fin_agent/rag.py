@@ -19,6 +19,7 @@ _TOP_K = 5              # default number of chunks to retrieve
 _COLLECTION = "fin_agent_rag"
 _DIM = 384              # paraphrase-multilingual-MiniLM-L12-v2 output dim
 _MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+# _MODEL_NAME = "BAAI/bge-m3"
 
 # Lazy-loaded singletons
 _model = None
@@ -34,12 +35,19 @@ def _get_model():
     if _model is None:
         try:
             from sentence_transformers import SentenceTransformer
-            _model = SentenceTransformer(_MODEL_NAME)
         except ImportError:
             raise ImportError(
                 "sentence-transformers is required for RAG. "
                 "Install it with: pip install sentence-transformers"
             )
+        import os
+        # Use hf-mirror for first-time download in environments without direct HuggingFace access.
+        if not os.environ.get("HF_ENDPOINT"):
+            os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+        # Once the model is cached locally, force offline mode to skip network checks.
+        os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+        os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
+        _model = SentenceTransformer(_MODEL_NAME)
     return _model
 
 
