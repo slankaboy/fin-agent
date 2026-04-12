@@ -1,7 +1,6 @@
 __pycache__/
-.env
+
 .pypitoken
 dist/
 *.egg-info/
-.vscode/
 .DS_Store
