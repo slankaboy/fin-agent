@@ -40,6 +40,10 @@ from fin_agent.tools.rag_tools import (
     list_rag_sources,
     delete_rag_source
 )
+from fin_agent.tools.fin_report_tools import (
+    FIN_REPORT_TOOLS_SCHEMA,
+    execute_fin_report_tool
+)
 
 # Initialize Tushare - will be re-initialized when called if Config updates
 def get_pro():
@@ -1463,31 +1467,6 @@ BASE_TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
-            "name": "get_income_statement",
-            "description": "Get historical income statement data (Revenue, Net Income) to analyze financial performance.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "ts_code": {
-                        "type": "string",
-                        "description": "The stock code (e.g., '000001.SZ')."
-                    },
-                    "start_date": {
-                        "type": "string",
-                        "description": "Start date (YYYYMMDD). Defaults to 2 years ago."
-                    },
-                    "end_date": {
-                        "type": "string",
-                        "description": "End date (YYYYMMDD)."
-                    }
-                },
-                "required": ["ts_code"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "get_index_daily",
             "description": "Get daily index market data (e.g. 000001.SH for Shanghai Composite, 399001.SZ for Shenzhen Component).",
             "parameters": {
@@ -2238,7 +2217,7 @@ BASE_TOOLS_SCHEMA = [
 ]
 
 # Combine schemas
-TOOLS_SCHEMA = BASE_TOOLS_SCHEMA + PORTFOLIO_TOOLS_SCHEMA + SCHEDULER_TOOLS_SCHEMA + PROFILE_TOOLS_SCHEMA + LOCAL_REPORT_TOOLS_SCHEMA + RAG_TOOLS_SCHEMA
+TOOLS_SCHEMA = BASE_TOOLS_SCHEMA + PORTFOLIO_TOOLS_SCHEMA + SCHEDULER_TOOLS_SCHEMA + PROFILE_TOOLS_SCHEMA + LOCAL_REPORT_TOOLS_SCHEMA + RAG_TOOLS_SCHEMA + FIN_REPORT_TOOLS_SCHEMA
 
 # Helper to execute tool calls
 def execute_tool_call(tool_name, arguments):
@@ -2276,8 +2255,6 @@ def execute_tool_call(tool_name, arguments):
         return get_realtime_price(**arguments)
     elif tool_name == "get_daily_basic":
         return get_daily_basic(**arguments)
-    elif tool_name == "get_income_statement":
-        return get_income_statement(**arguments)
     elif tool_name == "get_index_daily":
         return get_index_daily(**arguments)
     elif tool_name == "get_hk_stock_basic":
@@ -2380,5 +2357,7 @@ def execute_tool_call(tool_name, arguments):
         return list_rag_sources()
     elif tool_name == "delete_rag_source":
         return delete_rag_source(**arguments)
+    elif tool_name in ("get_income_statement", "get_balance_sheet", "get_cash_flow", "get_financial_indicator", "get_announcements", "download_financial_report"):
+        return execute_fin_report_tool(tool_name, arguments)
     else:
         return f"Error: Tool '{tool_name}' not found."
