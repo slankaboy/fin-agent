@@ -4,7 +4,7 @@ from fin_agent.config import Config
 import json
 import os
 from datetime import datetime, timedelta
-from fin_agent.tools.technical_indicators import get_technical_indicators, get_technical_patterns
+from fin_agent.tools.technical_indicators import get_technical_indicators, get_technical_patterns, regression_strategy
 from fin_agent.backtest import run_backtest
 from fin_agent.tools.portfolio_tools import (
     PORTFOLIO_TOOLS_SCHEMA, 
@@ -2346,6 +2346,31 @@ BASE_TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
+            "name": "regression_strategy",
+            "description": "Regression strategy that generates buy/sell signals based on MACD convergence, RSI, and Bollinger Bands. Buy when: MACD at low convergence, RSI < 30, and price near BOLL lower band. Sell when: MACD at high convergence, RSI > 70, and price breaks BOLL upper band.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ts_code": {
+                        "type": "string",
+                        "description": "The stock code (e.g., '000001.SZ')."
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "Start date in YYYYMMDD format. Optional."
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "End date in YYYYMMDD format. Optional, defaults to today."
+                    }
+                },
+                "required": ["ts_code"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "screen_stocks",
             "description": "Smart stock picker/screener. Filter stocks based on fundamental indicators (PE, PB, Market Value, Dividend) and industry.",
             "parameters": {
@@ -2541,6 +2566,8 @@ def execute_tool_call(tool_name, arguments):
         return get_technical_indicators(**arguments)
     elif tool_name == "get_technical_patterns":
         return get_technical_patterns(**arguments)
+    elif tool_name == "regression_strategy":
+        return regression_strategy(**arguments)
     elif tool_name == "screen_stocks":
         return screen_stocks(**arguments)
     elif tool_name == "get_long_tail_stocks":
