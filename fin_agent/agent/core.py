@@ -35,7 +35,7 @@ class FinAgent:
             "For valuation (PE, PB) or market cap, use 'get_daily_basic'. "
             "For financial performance (Revenue, Profit), use 'get_income_statement'. "
             "For market index (Shanghai Composite, etc.), use 'get_index_daily'. "
-            "For Hong Kong stocks (e.g., '00700.HK', Tencent), use 'get_hk_stock_basic' for basic info, 'get_hk_daily_price' for historical data, and 'get_hk_realtime_price' for latest price. "
+            "For Hong Kong stocks (e.g., '00700.HK', Tencent), use 'get_hk_stock_basic' for basic info, 'get_hk_daily_price' for historical data, 'get_hk_realtime_price' for latest price, 'get_hk_daily_basic' for valuation (PE/PB), 'get_hk_income_statement' for financials, 'get_hk_index_daily' for Hong Kong market indices (HSI, HSCEI), and 'get_hk_hsgt' for Stock Connect flows. "
             "For US stocks (e.g., 'AAPL.O', Apple), use 'get_us_stock_basic' for basic info, 'get_us_daily_price' for historical data, and 'get_us_realtime_price' for latest price. "
             "For ETF (Exchange Traded Fund), use 'get_etf_basic' and 'get_etf_daily_price'. "
             "For convertible bonds (可转债), use 'get_cb_basic' and 'get_cb_daily_price'. "

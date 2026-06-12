@@ -878,6 +878,136 @@ def get_hk_realtime_price(ts_code):
     except Exception as e:
         return f"Error fetching Hong Kong stock realtime price: {str(e)}"
 
+def get_hk_daily_basic(ts_code, start_date=None, end_date=None):
+    """
+    Get daily basic indicators (PE, PB, turnover, market cap) for Hong Kong stocks.
+    :param ts_code: Stock code (e.g., 00700.HK)
+    :param start_date: Start date (YYYYMMDD)
+    :param end_date: End date (YYYYMMDD)
+    :return: JSON string
+    """
+    if not start_date:
+        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y%m%d')
+    if not end_date:
+        end_date = datetime.now().strftime('%Y%m%d')
+    
+    try:
+        pro = get_pro()
+        df = pro.hk_daily_basic(ts_code=ts_code, start_date=start_date, end_date=end_date,
+                               fields='ts_code,trade_date,close,turnover_rate,pe,pe_ttm,pb,ps,total_mv,circ_mv')
+        if df.empty:
+            return f"No daily basic data found for Hong Kong stock {ts_code}."
+        df = df.sort_values('trade_date', ascending=False)
+        return df.to_json(orient='records', force_ascii=False)
+    except Exception as e:
+        return f"Error fetching Hong Kong stock daily basic: {str(e)}"
+
+def get_hk_income_statement(ts_code, start_date=None, end_date=None):
+    """
+    Get income statement data for Hong Kong stocks (Revenue, Profit).
+    :param ts_code: Stock code (e.g., 00700.HK)
+    :param start_date: Start date (YYYYMMDD)
+    :param end_date: End date (YYYYMMDD)
+    :return: JSON string
+    """
+    if not start_date:
+        start_date = (datetime.now() - timedelta(days=730)).strftime('%Y%m%d')
+    if not end_date:
+        end_date = datetime.now().strftime('%Y%m%d')
+    
+    try:
+        pro = get_pro()
+        df = pro.hk_income(ts_code=ts_code, start_date=start_date, end_date=end_date,
+                          fields='ts_code,ann_date,f_ann_date,end_date,report_type,total_revenue,revenue,total_profit,n_income')
+        if df.empty:
+            return f"No income statement data found for Hong Kong stock {ts_code}."
+        df = df.sort_values('end_date', ascending=False)
+        return df.to_json(orient='records', force_ascii=False)
+    except Exception as e:
+        return f"Error fetching Hong Kong stock income statement: {str(e)}"
+
+def get_hk_index_daily(ts_code=None, start_date=None, end_date=None):
+    """
+    Get daily Hong Kong stock market index data (e.g., HSI, HSCEI).
+    :param ts_code: Index code (e.g., 'HSI', 'HSCEI', 'HSCCI')
+                   HSI - 恒生指数
+                   HSCEI - 恒生中国企业指数
+                   HSCCI - 恒生香港中资企业指数
+                   If not provided, returns all major indices.
+    :param start_date: Start date (YYYYMMDD)
+    :param end_date: End date (YYYYMMDD)
+    :return: JSON string
+    """
+    if not start_date:
+        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y%m%d')
+    if not end_date:
+        end_date = datetime.now().strftime('%Y%m%d')
+    
+    try:
+        pro = get_pro()
+        # Map index codes to ts_code format
+        index_mapping = {
+            'HSI': 'HSI.HI',
+            'HSCEI': 'HSCEI.HI',
+            'HSCCI': 'HSCCI.HI',
+            '恒生指数': 'HSI.HI',
+            '国企指数': 'HSCEI.HI',
+            '红筹指数': 'HSCCI.HI'
+        }
+        
+        if ts_code:
+            # Try to map if user provided a friendly name
+            ts_code = index_mapping.get(ts_code, ts_code)
+            df = pro.index_daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+        else:
+            # Get all major HK indices
+            dfs = []
+            for idx_code in index_mapping.values():
+                try:
+                    df = pro.index_daily(ts_code=idx_code, start_date=start_date, end_date=end_date)
+                    if not df.empty:
+                        dfs.append(df)
+                except:
+                    continue
+            if not dfs:
+                return "No Hong Kong index data found."
+            df = pd.concat(dfs)
+        
+        if df.empty:
+            return f"No index data found for {ts_code}."
+        df = df.sort_values('trade_date', ascending=False)
+        return df.to_json(orient='records', force_ascii=False)
+    except Exception as e:
+        return f"Error fetching Hong Kong index data: {str(e)}"
+
+def get_hk_hsgt(trade_date=None):
+    """
+    Get Hong Kong Stock Connect (港股通) daily data - northbound and southbound flows.
+    :param trade_date: Trade date (YYYYMMDD). Defaults to today.
+    :return: JSON string
+    """
+    if not trade_date:
+        trade_date = datetime.now().strftime('%Y%m%d')
+    
+    try:
+        pro = get_pro()
+        df = pro.hsgt_daily(trade_date=trade_date)
+        if df.empty:
+            # Try to get recent data if no data for specified date
+            now = datetime.now()
+            for i in range(7):
+                date_str = (now - timedelta(days=i)).strftime('%Y%m%d')
+                try:
+                    df = pro.hsgt_daily(trade_date=date_str)
+                    if not df.empty:
+                        return df.to_json(orient='records', force_ascii=False)
+                except:
+                    continue
+            return f"No Hong Kong Stock Connect data found for recent dates."
+        return df.to_json(orient='records', force_ascii=False)
+    except Exception as e:
+        return f"Error fetching Hong Kong Stock Connect data: {str(e)}"
+
 def get_us_realtime_price(ts_code):
     """
     Get realtime US stock price.
@@ -1601,6 +1731,98 @@ BASE_TOOLS_SCHEMA = [
     {
         "type": "function",
         "function": {
+            "name": "get_hk_daily_basic",
+            "description": "Get daily basic indicators (PE, PB, PS, turnover rate, market cap) for Hong Kong stocks.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ts_code": {
+                        "type": "string",
+                        "description": "The Hong Kong stock code (e.g., '00700.HK')."
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "Start date in YYYYMMDD format. Defaults to 30 days ago."
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "End date in YYYYMMDD format. Defaults to today."
+                    }
+                },
+                "required": ["ts_code"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_hk_income_statement",
+            "description": "Get income statement data (Revenue, Profit) for Hong Kong stocks.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ts_code": {
+                        "type": "string",
+                        "description": "The Hong Kong stock code (e.g., '00700.HK')."
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "Start date in YYYYMMDD format. Defaults to 2 years ago."
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "End date in YYYYMMDD format. Defaults to today."
+                    }
+                },
+                "required": ["ts_code"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_hk_index_daily",
+            "description": "Get daily Hong Kong market index data (HSI, HSCEI, HSCCI). If no index code is provided, returns data for all major Hong Kong indices.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ts_code": {
+                        "type": "string",
+                        "description": "The index code or name (e.g., 'HSI', '恒生指数', 'HSCEI', '国企指数', 'HSCCI', '红筹指数'). Optional."
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "Start date in YYYYMMDD format. Defaults to 30 days ago."
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "End date in YYYYMMDD format. Defaults to today."
+                    }
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_hk_hsgt",
+            "description": "Get Hong Kong Stock Connect (港股通) daily data - northbound and southbound capital flows.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "trade_date": {
+                        "type": "string",
+                        "description": "Trade date in YYYYMMDD format. Defaults to today."
+                    }
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_us_realtime_price",
             "description": "Get the latest real-time price data for a US stock. If realtime data is unavailable, returns the latest daily price data.",
             "parameters": {
@@ -2267,6 +2489,14 @@ def execute_tool_call(tool_name, arguments):
         return get_us_daily_price(**arguments)
     elif tool_name == "get_hk_realtime_price":
         return get_hk_realtime_price(**arguments)
+    elif tool_name == "get_hk_daily_basic":
+        return get_hk_daily_basic(**arguments)
+    elif tool_name == "get_hk_income_statement":
+        return get_hk_income_statement(**arguments)
+    elif tool_name == "get_hk_index_daily":
+        return get_hk_index_daily(**arguments)
+    elif tool_name == "get_hk_hsgt":
+        return get_hk_hsgt(**arguments)
     elif tool_name == "get_us_realtime_price":
         return get_us_realtime_price(**arguments)
     elif tool_name == "get_etf_basic":
