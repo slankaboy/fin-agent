@@ -5,3 +5,4 @@ dist/
 *.egg-info/
 .DS_Store
 fin_agent/.DS_Store
+mock_files/
