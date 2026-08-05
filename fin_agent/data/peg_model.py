@@ -56,13 +56,45 @@ def fetch_peg_data(output_dir="mock_files"):
     os.makedirs(output_dir, exist_ok=True)
     current_timestamp = int(datetime.now().timestamp() * 1000)
 
+    # 使用用户提供的原始 payload
     payload = {
         "type": "h5",
         "version": "2.5.9",
         "ss": "",
-        "act_time": current_timestamp,
+        "act_time": 1785912462606,  # 使用用户提供的固定时间戳测试
+        "tirgkjfs": "d2",
+        "abiokytke": "4f",
+        "u54rg5d": "cf",
+        "kf54ge7": "b",
+        "tiklsktr4": "2",
+        "lksytkjh": "c894",
+        "sbnoywr": "c2",
+        "bgd7h8tyu54": "5c",
+        "y654b5fs3tr": "8",
+        "bioduytlw": "3",
+        "bd4uy742": "e",
+        "h67456y": "bc8",
+        "bvytikwqjk": "5c",
+        "ngd4uy551": "c8",
+        "bgiuytkw": "b6",
+        "nd354uy4752": "9",
+        "ghtoiutkmlg": "896",
+        "bd24y6421f": "2c",
+        "tbvdiuytk": "b",
+        "ibvytiqjek": "05",
+        "jnhf8u5231": "b6",
+        "fjlkatj": "cf2",
+        "hy5641d321t": "ce",
+        "iogojti": "c",
+        "ngd4yut78": "96",
+        "nkjhrew": "e",
+        "yt447e13f": "7",
+        "n3bf4uj7y7": "8",
+        "nbf4uj7y432": "4f",
+        "yi854tew": "29",
+        "h13ey474": "29b",
+        "quikgdky": "d1"
     }
-    payload.update(SIGN_PARAMS)
 
     try:
         print("正在请求 PEG 模型数据...")
@@ -71,62 +103,71 @@ def fetch_peg_data(output_dir="mock_files"):
         result = response.json()
 
         print(f"响应状态: {result.get('code', 'N/A')}")
-        print(f"响应消息: {result.get('msg', 'N/A')}")
+        print(f"响应消息: {result.get('message', 'N/A')}")
 
         data = result.get('data', {})
-        if isinstance(data, dict):
-            records = data.get('list', [])
-            head = data.get('head', [])
-            update_time = data.get('update_time', '')
-        elif isinstance(data, list):
-            records = data
-            head = []
-            update_time = ''
-        else:
-            records = []
-            head = []
-            update_time = ''
-
-        if not records:
+        if not data:
             print("⚠️ data 字段为空")
-            print(json.dumps(result, indent=2, ensure_ascii=False))
             return None
 
-        print(f"✓ 成功获取 {len(records)} 条记录")
-        print(f"更新时间: {update_time}")
+        # PEG 接口返回的是图表数据结构
+        title = data.get('title', '')
+        desc = data.get('desc', '')
+        x_label = data.get('_x', '')
+        y_label = data.get('_y', '')
+        tuli_x = data.get('tuli_x', '')
+        tuli_y = data.get('tuli_y', '')
+        update_time = data.get('update_time', '')
+        series = data.get('series', [])
 
-        # 解析表头
-        head_names = []
-        if head:
-            sorted_head = sorted(head, key=lambda h: h.get('id', 0))
-            head_names = [h.get('val', '') for h in sorted_head[1:]]
-            print(f"表头: {head_names}")
+        if not series:
+            print("⚠️ series 字段为空")
+            return None
+
+        print(f"✓ 标题: {title}")
+        print(f"✓ 更新时间: {update_time}")
+        print(f"✓ X轴: {x_label} ({tuli_x})")
+        print(f"✓ Y轴: {y_label} ({tuli_y})")
+        print(f"✓ 共 {len(series)} 条记录")
 
         # 扁平化数据
         flat_records = []
-        for item in records:
+        for item in series:
+            x1_val = item.get('x1', '')
+            y1_val = item.get('y1', '')
             flat_item = {
-                'code': item.get('gu_code', ''),
-                'name': item.get('gu_name', ''),
-                'level': item.get('level', ''),
-                'tag': item.get('tag', ''),
+                'name': item.get('name', ''),
+                '2y_profit_growth_rate': f"{x1_val}%" if x1_val != '' else '',
+                'pred_2y_pe': f"{y1_val}" if y1_val != '' else '',
                 'update_time': update_time,
+                'title': title,
             }
-            item_list = item.get('list', [])[1:]  # 跳过第一个元素
-            for i, col_name in enumerate(head_names):
-                if i < len(item_list):
-                    flat_item[col_name] = item_list[i].get('val', '')
-                else:
-                    flat_item[col_name] = ''
             flat_records.append(flat_item)
 
         df = pd.DataFrame(flat_records)
         df['_fetch_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
+        # 添加描述信息到单独的元数据文件
+        meta_info = {
+            'title': title,
+            'desc': desc.replace('<br>', ' '),
+            'x_label': x_label,
+            'y_label': y_label,
+            'tuli_x': tuli_x,
+            'tuli_y': tuli_y,
+            'update_time': update_time,
+        }
+
         date_str = datetime.now().strftime('%Y%m%d')
         csv_filename = os.path.join(output_dir, f"PEG模型_{date_str}.csv")
         df.to_csv(csv_filename, index=False, encoding='utf-8-sig')
         print(f"✓ 数据已保存到: {csv_filename}")
+
+        # 保存元数据
+        meta_filename = os.path.join(output_dir, f"PEG模型_元数据_{date_str}.json")
+        with open(meta_filename, 'w', encoding='utf-8') as f:
+            json.dump(meta_info, f, ensure_ascii=False, indent=2)
+        print(f"✓ 元数据已保存到: {meta_filename}")
 
         # 显示数据预览
         print("\n=== PEG 模型数据预览 ===")
